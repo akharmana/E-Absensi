@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi Resmi Sekolah</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { background-color: #f8f9fa; padding-top: 20px; }
+    .container { max-width: 500px; }
+    .card-custom { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+    #reader { width: 100%; min-height: 250px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px dashed #ced4da; }
+    #reader video { border-radius: 8px; object-fit: cover !important; width: 100% !important; height: 100% !important; }
+    .garis-pembatas { display: flex; align-items: center; text-align: center; margin: 20px 0; color: #6c757d; font-size: 0.9rem; }
+    .garis-pembatas::before, .garis-pembatas::after { content: ''; flex: 1; border-bottom: 1px solid #dee2e6; }
+    .garis-pembatas:not(:empty)::before { margin-right: .25em; }
+    .garis-pembatas:not(:empty)::after { margin-left: .25em; }
+  </style>
+</head>
+<body>
+<script>
+  // Trik Pembebasan Sandbox: Memaksa halaman keluar dari Iframe Google jika diblokir
+  if (window.top !== window.self) {
+    window.top.location.href = window.self.location.href;
+  }
+</script>
+<div class="container">
+  <div class="card-custom text-center">
+    <h4 class="mb-3">Sistem Absensi Siswa</h4>
+    
+    <div id="reader">
+      <div id="mintaIzin" class="p-3">
+        <p class="text-muted small">Kamera belum aktif atau diblokir browser.</p>
+        <button onclick="nyalakanKameraPaksa()" class="btn btn-dark btn-sm">Aktifkan Kamera Sekarang</button>
+      </div>
+    </div>
+    
+    <div class="garis-pembatas">ATAU KETIK ID SISWA</div>
+    
+    <div class="row g-2 align-items-center mb-3">
+      <div class="col-8">
+        <input type="text" id="manualId" class="form-control" placeholder="Contoh: 2026001">
+      </div>
+      <div class="col-4">
+        <button onclick="absenManual()" class="btn btn-primary w-100">Kirim</button>
+      </div>
+    </div>
+    
+    <div id="hasil" class="alert alert-info d-none" role="alert"></div>
+  </div>
+</div>
+
+<script>
+  let html5QrCode;
+  const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+
+  const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+      html5QrCode.stop().then(() => {
+          kirimKeServer(decodedText.trim());
+      });
+  };
+
+  // Mencoba menyalakan kamera otomatis saat pertama kali dibuka
+  window.onload = function() {
+      html5QrCode = new Html5Qrcode("reader");
+      nyalakanKameraOtomatis();
+  };
+
+  function nyalakanKameraOtomatis() {
+      html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+        .then(() => { document.getElementById('mintaIzin').style.display = 'none'; })
+        .catch((err) => { console.log("Otomatisasi kamera gagal, menunggu klik manual."); });
+  }
+
+  // Fungsi yang dipanggil saat tombol "Aktifkan Kamera Sekarang" diklik
+  function nyalakanKameraPaksa() {
+      document.getElementById('mintaIzin').innerHTML = "<p class='text-muted small'>Membuka kamera...</p>";
+      
+      // Meminta daftar kamera yang tersedia di perangkat
+      Html5Qrcode.getCameras().then(devices => {
+          if (devices && devices.length) {
+              // Pilih kamera belakang jika ada, atau kamera pertama yang ditemukan
+              let cameraId = devices[devices.length - 1].id; 
+              
+              html5QrCode.start(cameraId, config, qrCodeSuccessCallback)
+                .then(() => {  document.getElementById('mintaIzin').style.display = 'none'; })
+                .catch(err => { infoErorKamera(err); });
+          } else {
+              infoErorKamera("Kamera tidak terdeteksi.");
+          }
+      }).catch(err => { infoErorKamera(err); });
+  }
+
+  function infoErorKamera(pesan) {
+      document.getElementById('mintaIzin').innerHTML = `
+        <p class="text-danger small">Gagal memuat: ${pesan}</p>
+        <button onclick="nyalakanKameraPaksa()" class="btn btn-dark btn-sm">Coba Lagi</button>
+      `;
+  }
+
+  function kirimKeServer(idSiswa) {
+      var dataHasil = document.getElementById('hasil');
+      dataHasil.classList.remove('d-none');
+      dataHasil.className = "alert alert-warning";
+      dataHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+            dataHasil.className = "alert alert-success";
+            dataHasil.innerText = response;
+            document.getElementById('manualId').value = ""; 
+            setTimeout(restartKamera, 3000);
+        })
+        .withFailureHandler(function(error) {
+            dataHasil.className = "alert alert-danger";
+            dataHasil.innerText = error.message;
+            setTimeout(restartKamera, 4000);
+        })
+        .tambahAbsen(idSiswa);
+  }
+
+  function absenManual() {
+      var idInput = document.getElementById('manualId').value.trim();
+      if(idInput === "") { alert("Silakan masukkan ID Siswa!"); return; }
+      kirimKeServer(idInput);
+  }
+
+  function restartKamera() {
+      document.getElementById('hasil').classList.add('d-none');
+      nyalakanKameraOtomatis();
+  }
+</script>
+
+</body>
+</html>
