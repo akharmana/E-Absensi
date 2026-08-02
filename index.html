@@ -107,7 +107,8 @@
       boxHasil.className = "alert alert-warning py-3 fw-bold";
       boxHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
     }
-
+// 1. TAMBAHKAN ATAU PERIKSA BARIS INI (Wajib ada di paling atas script)
+  const URL_API = "https://script.google.com/macros/s/AKfycbwkW09oYTGLS2BdAi3dd00yN-PIz8c-UhrPW46bMDK-xYj2qWLOwfZeYGejX2MpWnAfvA/exec";
     // Mengirim data menggunakan HTTP POST fetch (Bekerja 100% di GitHub Pages)
     fetch(URL_API, {
       method: "POST",
