@@ -99,9 +99,10 @@
         <button onclick="nyalakanKameraPaksa()" class="btn btn-dark btn-sm">Coba Lagi</button>
       `;
   }
-
+// ⚠️ PASTIKAN BARIS INI ADA DI PALING ATAS BAGIAN SCRIPT
+  // Ganti link di bawah dengan Link Web App Apps Script Anda yang berakhiran /exec
+  const URL_API = "https://script.google.com/macros/s/AKfycbzx2449wikTddevQEEgsPLfmkE_CEVtaMUE-zKvoXTrZMIHJlzn2JrofyWJfHc1CKaRNA/exec";
   let sedangMemproses = false; // Flag pengunci agar tidak double-send
-
 function kirimKeServer(idSiswa) {
     // 1. Mencegah pengiriman ganda jika request sebelumnya belum selesai
     if (sedangMemproses) return;
