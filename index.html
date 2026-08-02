@@ -101,25 +101,40 @@
   }
 
   function kirimKeServer(idSiswa) {
-      var dataHasil = document.getElementById('hasil');
-      dataHasil.classList.remove('d-none');
-      dataHasil.className = "alert alert-warning";
-      dataHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
+    const boxHasil = document.getElementById('hasil'); // sesuaikan ID elemen teks notifikasi Anda
+    if(boxHasil) {
+      boxHasil.classList.remove('d-none');
+      boxHasil.className = "alert alert-warning py-3 fw-bold";
+      boxHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
+    }
 
-      google.script.run
-        .withSuccessHandler(function(response) {
-            dataHasil.className = "alert alert-success";
-            dataHasil.innerText = response;
-            document.getElementById('manualId').value = ""; 
-            setTimeout(restartKamera, 3000);
-        })
-        .withFailureHandler(function(error) {
-            dataHasil.className = "alert alert-danger";
-            dataHasil.innerText = error.message;
-            setTimeout(restartKamera, 4000);
-        })
-        .tambahAbsen(idSiswa);
-  }
+    // Mengirim data menggunakan HTTP POST fetch (Bekerja 100% di GitHub Pages)
+    fetch(URL_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify({ idSiswa: idSiswa })
+    })
+    .then(response => response.json())
+    .then(data => {
+       if (data.status === "success") {
+         boxHasil.className = "alert alert-success py-3 fw-bold";
+         boxHasil.innerText = data.message;
+         var inputManual = document.getElementById('manualId');
+         if(inputManual) inputManual.value = "";
+       } else {
+         boxHasil.className = "alert alert-danger py-3 fw-semibold";
+         boxHasil.innerText = data.message;
+       }
+       setTimeout(restartKamera, 3000);
+    })
+    .catch(err => {
+       boxHasil.className = "alert alert-danger py-3 fw-bold";
+       boxHasil.innerText = "Gagal memproses data! Periksa koneksi internet.";
+       setTimeout(restartKamera, 3000);
+    });
+}
 
   function absenManual() {
       var idInput = document.getElementById('manualId').value.trim();
