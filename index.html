@@ -100,43 +100,64 @@
       `;
   }
 
-  function kirimKeServer(idSiswa) {
-    const boxHasil = document.getElementById('hasil'); // sesuaikan ID elemen teks notifikasi Anda
-    if(boxHasil) {
-      boxHasil.classList.remove('d-none');
-      boxHasil.className = "alert alert-warning py-3 fw-bold";
-      boxHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
+  let sedangMemproses = false; // Flag pengunci agar tidak double-send
+
+function kirimKeServer(idSiswa) {
+    // 1. Mencegah pengiriman ganda jika request sebelumnya belum selesai
+    if (sedangMemproses) return;
+    
+    // Pastikan ID tidak kosong
+    if (!idSiswa || idSiswa.trim() === "") return;
+    
+    sedangMemproses = true; // Kunci status pengiriman
+
+    // Nonaktifkan tombol Kirim dan Input agar user tidak bisa klik berulang kali
+    const btnKirim = document.getElementById('btnKirim'); // Sesuaikan ID tombol Kirim Anda
+    const inputManual = document.getElementById('manualId'); // Sesuaikan ID input Anda
+    const boxHasil = document.getElementById('hasil');
+
+    if (btnKirim) btnKirim.disabled = true;
+    if (inputManual) inputManual.disabled = true;
+
+    if (boxHasil) {
+        boxHasil.classList.remove('d-none');
+        boxHasil.className = "alert alert-warning py-3 fw-bold";
+        boxHasil.innerText = "Memverifikasi ID: " + idSiswa + "...";
     }
-// 1. TAMBAHKAN ATAU PERIKSA BARIS INI (Wajib ada di paling atas script)
-  const URL_API = "https://script.google.com/macros/s/AKfycbzx2449wikTddevQEEgsPLfmkE_CEVtaMUE-zKvoXTrZMIHJlzn2JrofyWJfHc1CKaRNA/exec";
-    // Mengirim data menggunakan HTTP POST fetch (Bekerja 100% di GitHub Pages)
+
+    // 2. Kirim data ke Google Apps Script
     fetch(URL_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify({ idSiswa: idSiswa })
+        method: "POST",
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({ idSiswa: idSiswa })
     })
     .then(response => response.json())
     .then(data => {
-       if (data.status === "success") {
-         boxHasil.className = "alert alert-success py-3 fw-bold";
-         boxHasil.innerText = data.message;
-         var inputManual = document.getElementById('manualId');
-         if(inputManual) inputManual.value = "";
-       } else {
-         boxHasil.className = "alert alert-danger py-3 fw-semibold";
-         boxHasil.innerText = data.message;
-       }
-       setTimeout(restartKamera, 3000);
+        if (data.status === "success") {
+            boxHasil.className = "alert alert-success py-3 fw-bold";
+            boxHasil.innerText = data.message;
+            if (inputManual) inputManual.value = "";
+        } else {
+            boxHasil.className = "alert alert-danger py-3 fw-semibold";
+            boxHasil.innerText = data.message;
+        }
     })
     .catch(err => {
-       boxHasil.className = "alert alert-danger py-3 fw-bold";
-       boxHasil.innerText = "Gagal memproses data! Periksa koneksi internet.";
-       setTimeout(restartKamera, 3000);
+        boxHasil.className = "alert alert-danger py-3 fw-bold";
+        boxHasil.innerText = "Gagal memproses data! Periksa koneksi internet.";
+    })
+    .finally(() => {
+        // 3. Buka kembali kuncian setelah 3 detik (memberi jeda waktu)
+        setTimeout(() => {
+            sedangMemproses = false;
+            if (btnKirim) btnKirim.disabled = false;
+            if (inputManual) inputManual.disabled = false;
+            if (typeof restartKamera === "function") restartKamera();
+        }, 3000);
     });
 }
-
   function absenManual() {
       var idInput = document.getElementById('manualId').value.trim();
       if(idInput === "") { alert("Silakan masukkan ID Siswa!"); return; }
